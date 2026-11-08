@@ -309,6 +309,16 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
 }
 .notice:empty { display: none; }
 
+.sync {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 700; margin-right: 12px;
+  padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+}
+.sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.sync-live::before { background: #2f9e5b; }
+.sync-offline::before, .sync-error::before { background: var(--danger); }
+.btn:disabled { opacity: .6; cursor: progress; }
+
 /* Toast */
 .toast {
   position: fixed;
@@ -363,7 +373,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   <header>
     <div>
       <h1>Meeting Action Tracker</h1>
-      <p>Every agreed action, who owns it, and when it is due.</p>
+      <p>Every agreed action, who owns it, and when it is due. Shared live with your team.</p>
     </div>
     <div class="today" id="today"></div>
   </header>
@@ -414,16 +424,20 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   <button type="button" id="toastUndo" hidden>Undo</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function () {
   "use strict";
 
-  var STORE_KEY = "meeting-action-tracker.v1";
-  var SEEN_KEY = "meeting-action-tracker.seeded";
+  // Supabase connection (publishable key is safe to expose in the browser; access is governed by RLS)
+  var SUPABASE_URL = "https://lexgnjhbxnaorlbqknkz.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_-363rmon-8X3TMvruLE7gQ_brUDfUGj";
+  var TABLE = "actions";
+  var PREFS_KEY = "meeting-action-tracker.prefs";
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  var state = { actions: [], hideDone: false };
-  var storageOk = true;
+  var db = null;
+  var state = { actions: [], hideDone: false, status: "loading", error: "" };
   var lastDeleted = null;
   var toastTimer = null;
 
@@ -439,9 +453,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   }
   function daysBetween(fromIso, toIso) {
     var a = fromIso.split("-"), b = toIso.split("-");
-    var da = Date.UTC(+a[0], +a[1] - 1, +a[2]);
-    var db = Date.UTC(+b[0], +b[1] - 1, +b[2]);
-    return Math.round((db - da) / 86400000);
+    return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / 86400000);
   }
   function statusOf(a, today) {
     if (a.done) return "done";
@@ -451,7 +463,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     return "open";
   }
   function dueLabel(a, today) {
-    if (a.done) return "Done" + (a.doneAt ? " on " + fmtDate(a.doneAt) : "");
+    if (a.done) return "Done" + (a.done_at ? " on " + fmtDate(a.done_at) : "");
     if (!a.due) return "No due date";
     var diff = daysBetween(today, a.due);
     if (diff < 0) return (-diff) + (diff === -1 ? " day" : " days") + " overdue, due " + fmtDate(a.due);
@@ -460,48 +472,46 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     return "Due " + fmtDate(a.due);
   }
 
-  // ---------- storage ----------
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        state.actions = Array.isArray(parsed.actions) ? parsed.actions : [];
-        state.hideDone = !!parsed.hideDone;
-        return;
-      }
-      if (!localStorage.getItem(SEEN_KEY)) {
-        state.actions = examples();
-        localStorage.setItem(SEEN_KEY, "1");
-        save();
-      }
-    } catch (e) {
-      storageOk = false;
-      state.actions = examples();
-    }
+  // ---------- per-viewer prefs (local only) ----------
+  function loadPrefs() {
+    try { state.hideDone = !!(JSON.parse(localStorage.getItem(PREFS_KEY) || "{}").hideDone); } catch (e) {}
   }
-  function save() {
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ actions: state.actions, hideDone: state.hideDone }));
-    } catch (e) {
-      storageOk = false;
-    }
+  function savePrefs() {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ hideDone: state.hideDone })); } catch (e) {}
   }
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  function examples() {
-    var t = todayIso();
-    return [
-      { text: "Confirm December weekend rota with store managers", owner: "Priya", due: addDays(-3) },
-      { text: "Share stock-take variance report", owner: "Priya", due: addDays(2) },
-      { text: "Book pest control for Tampines outlet", owner: "Marcus", due: addDays(-1) },
-      { text: "Update POS price tags for year-end sale", owner: "Marcus", due: t },
-      { text: "Send new-hire onboarding pack", owner: "Marcus", due: addDays(-5), done: true },
-      { text: "Collect Q4 shrinkage figures from all outlets", owner: "Wei Ling", due: addDays(6) },
-      { text: "Draft festive staffing budget", owner: "Wei Ling", due: addDays(1) }
-    ].map(function (a) {
-      return { id: uid(), text: a.text, owner: a.owner, due: a.due, done: !!a.done,
-               doneAt: a.done ? addDays(-4) : null, createdAt: t, example: true };
-    });
+
+  // ---------- data ----------
+  function upsertLocal(row) {
+    var i = state.actions.findIndex(function (a) { return a.id === row.id; });
+    if (i >= 0) state.actions[i] = row; else state.actions.push(row);
+  }
+  function removeLocal(id) {
+    state.actions = state.actions.filter(function (a) { return a.id !== id; });
+  }
+
+  async function fetchAll() {
+    var res = await db.from(TABLE).select("*").order("due", { ascending: true });
+    if (res.error) throw res.error;
+    state.actions = res.data || [];
+  }
+
+  function subscribe() {
+    db.channel("actions-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, function (p) {
+        if (p.eventType === "DELETE") removeLocal(p.old.id);
+        else upsertLocal(p.new);
+        render();
+      })
+      .subscribe(function (s) {
+        if (s === "SUBSCRIBED") setStatus("live");
+        else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") setStatus("offline");
+      });
+  }
+
+  function setStatus(s, err) {
+    state.status = s;
+    if (err) state.error = err;
+    render();
   }
 
   // ---------- render ----------
@@ -519,7 +529,8 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
 
   function render() {
     var today = todayIso();
-    $("today").textContent = "Today: " + fmtDate(today);
+    var statusText = { loading: "Connecting…", live: "Live", offline: "Offline", error: "Not connected" }[state.status];
+    $("today").innerHTML = '<span class="sync sync-' + state.status + '">' + statusText + "</span> Today: " + fmtDate(today);
 
     var open = 0, done = 0, overdue = 0;
     var groups = {};
@@ -539,20 +550,21 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     $("countOverdue").textContent = overdue;
     $("overdueTile").classList.toggle("zero", overdue === 0);
 
-    // owner suggestions
     var names = Object.keys(groups).map(function (k) { return groups[k].name; }).sort();
     $("ownerList").innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join("");
 
-    // notice
-    var hasExamples = state.actions.some(function (a) { return a.example; });
     var notes = [];
-    if (hasExamples) notes.push('<span>Showing example actions so you can see how it works.</span><button class="btn ghost" type="button" id="clearExamples">Remove examples</button>');
-    if (!storageOk) notes.push("<span>This browser is blocking local storage, so actions will be lost when you close the page.</span>");
+    if (state.status === "error") notes.push("<span>Could not load actions from the database: " + esc(state.error) + '</span><button class="btn ghost" type="button" id="retryBtn">Try again</button>');
+    if (state.status === "offline") notes.push("<span>Live updates paused. Changes you make still save, refresh to see others' changes.</span>");
     $("notice").innerHTML = notes.join("");
-    var ce = $("clearExamples");
-    if (ce) ce.addEventListener("click", clearExamples);
+    var rb = $("retryBtn");
+    if (rb) rb.addEventListener("click", start);
 
-    // owners
+    if (state.status === "loading" && !state.actions.length) {
+      $("owners").innerHTML = '<div class="empty" style="grid-column:1/-1">Loading actions…</div>';
+      return;
+    }
+
     var list = Object.keys(groups).map(function (k) { return groups[k]; });
     list.sort(function (x, y) {
       if (y.overdue !== x.overdue) return y.overdue - x.overdue;
@@ -561,7 +573,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     });
 
     if (!list.length) {
-      $("owners").innerHTML = '<div class="empty" style="grid-column:1/-1">No actions yet. Add the first one agreed in your meeting above.</div>';
+      $("owners").innerHTML = state.status === "error" ? "" : '<div class="empty" style="grid-column:1/-1">No actions yet. Add the first one agreed in your meeting above.</div>';
       return;
     }
 
@@ -579,9 +591,8 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
 
       var body = visible.length
         ? '<ul class="items">' + visible.map(function (i) {
-            var a = i.a, cls = "item is-" + i.s;
-            var cid = "cb-" + a.id;
-            return '<li class="' + cls + '" data-id="' + a.id + '">' +
+            var a = i.a, cid = "cb-" + a.id;
+            return '<li class="item is-' + i.s + '" data-id="' + a.id + '">' +
               '<input type="checkbox" id="' + cid + '"' + (a.done ? " checked" : "") + ' aria-label="Mark done: ' + esc(a.text) + '">' +
               '<label for="' + cid + '"><div class="text">' + esc(a.text) + '</div>' +
               '<div class="due">' + esc(dueLabel(a, today)) + '</div></label>' +
@@ -597,7 +608,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   }
 
   // ---------- actions ----------
-  function addAction(e) {
+  async function addAction(e) {
     e.preventDefault();
     var text = $("fText").value.trim();
     var owner = $("fOwner").value.trim().replace(/\s+/g, " ");
@@ -612,12 +623,18 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
       $(missing[0] === "action" ? "fText" : missing[0] === "owner" ? "fOwner" : "fDue").focus();
       return;
     }
-    // match an existing owner's spelling, case-insensitively
     var existing = state.actions.find(function (a) { return a.owner.trim().toLowerCase() === owner.toLowerCase(); });
     if (existing) owner = existing.owner.trim();
 
-    state.actions.push({ id: uid(), text: text, owner: owner, due: due, done: false, doneAt: null, createdAt: todayIso() });
-    save();
+    var btn = $("addBtn");
+    btn.disabled = true;
+    var res = await db.from(TABLE).insert({ text: text, owner: owner, due: due }).select().single();
+    btn.disabled = false;
+    if (res.error) {
+      $("formError").textContent = "Could not save the action: " + res.error.message;
+      return;
+    }
+    upsertLocal(res.data);
     $("formError").textContent = "";
     $("fText").value = "";
     $("fText").focus();
@@ -625,45 +642,64 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     showToast("Added for " + owner + ", due " + fmtDate(due) + ".");
   }
 
-  function onListClick(e) {
-    var li = e.target.closest(".item");
-    if (!li) return;
-    var id = li.getAttribute("data-id");
-    var idx = state.actions.findIndex(function (a) { return a.id === id; });
-    if (idx < 0) return;
-
-    if (e.target.matches('input[type="checkbox"]')) {
-      var a = state.actions[idx];
-      a.done = e.target.checked;
-      a.doneAt = a.done ? todayIso() : null;
-      save();
+  async function toggleDone(id, checked) {
+    var a = state.actions.find(function (x) { return x.id === id; });
+    if (!a) return;
+    var before = { done: a.done, done_at: a.done_at };
+    a.done = checked;
+    a.done_at = checked ? todayIso() : null;
+    render();
+    var cb = document.getElementById("cb-" + id);
+    if (cb) cb.focus();
+    var res = await db.from(TABLE).update({ done: a.done, done_at: a.done_at }).eq("id", id);
+    if (res.error) {
+      a.done = before.done; a.done_at = before.done_at;
       render();
-      var cb = document.getElementById("cb-" + id);
-      if (cb) cb.focus();
-    } else if (e.target.closest(".del")) {
-      lastDeleted = { item: state.actions[idx], index: idx };
-      state.actions.splice(idx, 1);
-      save();
-      render();
-      showToast("Action deleted.", true);
+      showToast("Could not save that change. Check your connection and try again.");
     }
   }
 
-  function undoDelete() {
-    if (!lastDeleted) return;
-    state.actions.splice(lastDeleted.index, 0, lastDeleted.item);
-    lastDeleted = null;
-    save();
+  async function deleteAction(id) {
+    var idx = state.actions.findIndex(function (a) { return a.id === id; });
+    if (idx < 0) return;
+    var item = state.actions[idx];
+    removeLocal(id);
     render();
-    hideToast();
+    var res = await db.from(TABLE).delete().eq("id", id);
+    if (res.error) {
+      upsertLocal(item);
+      render();
+      showToast("Could not delete that action. Try again.");
+      return;
+    }
+    lastDeleted = item;
+    showToast("Action deleted.", true);
   }
 
-  function clearExamples() {
-    state.actions = state.actions.filter(function (a) { return !a.example; });
-    save();
+  async function undoDelete() {
+    if (!lastDeleted) return;
+    var row = lastDeleted;
+    lastDeleted = null;
+    hideToast();
+    var res = await db.from(TABLE).insert({
+      id: row.id, text: row.text, owner: row.owner, due: row.due,
+      done: row.done, done_at: row.done_at, created_at: row.created_at
+    }).select().single();
+    if (res.error) { showToast("Could not restore the action."); return; }
+    upsertLocal(res.data);
     render();
-    showToast("Examples removed. Add your first real action above.");
-    $("fText").focus();
+  }
+
+  function onListChange(e) {
+    if (!e.target.matches('input[type="checkbox"]')) return;
+    var li = e.target.closest(".item");
+    if (li) toggleDone(li.getAttribute("data-id"), e.target.checked);
+  }
+  function onListClick(e) {
+    var del = e.target.closest(".del");
+    if (!del) return;
+    var li = del.closest(".item");
+    if (li) deleteAction(li.getAttribute("data-id"));
   }
 
   function copyOpen() {
@@ -690,7 +726,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     try {
       navigator.clipboard.writeText(text).then(function () {
         showToast("Copied. Paste it into your team chat or meeting notes.");
-      }, function () { showToast("Copy was blocked by the browser. Try again from a regular tab."); });
+      }, function () { showToast("Copy was blocked by the browser."); });
     } catch (err) {
       showToast("Copy is not available in this browser.");
     }
@@ -706,21 +742,41 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   function hideToast() { $("toast").hidden = true; }
 
   // ---------- init ----------
-  load();
+  async function start() {
+    setStatus("loading");
+    try {
+      if (!db) {
+        if (!window.supabase) throw new Error("the database library did not load");
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        subscribe();
+      }
+      await fetchAll();
+      if (state.status === "loading") state.status = "live";
+      render();
+    } catch (err) {
+      setStatus("error", err && err.message ? err.message : "unknown error");
+    }
+  }
+
+  loadPrefs();
   $("hideDone").checked = state.hideDone;
   $("fDue").value = addDays(7);
   $("addForm").addEventListener("submit", addAction);
-  $("owners").addEventListener("change", onListClick);
-  $("owners").addEventListener("click", function (e) { if (e.target.closest(".del")) onListClick(e); });
-  $("hideDone").addEventListener("change", function () { state.hideDone = this.checked; save(); render(); });
+  $("owners").addEventListener("change", onListChange);
+  $("owners").addEventListener("click", onListClick);
+  $("hideDone").addEventListener("change", function () { state.hideDone = this.checked; savePrefs(); render(); });
   $("copyBtn").addEventListener("click", copyOpen);
   $("toastUndo").addEventListener("click", undoDelete);
   ["fText", "fOwner", "fDue"].forEach(function (id) {
     $(id).addEventListener("input", function () { this.setAttribute("aria-invalid", "false"); });
   });
-  // roll overdue status over at midnight if the tab stays open
+  // re-check overdue status every minute and refetch when the tab regains focus
   setInterval(render, 60000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && db) fetchAll().then(render).catch(function () {});
+  });
   render();
+  start();
 })();
 </script>
 </body>

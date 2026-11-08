@@ -5,7 +5,22 @@ A single-page app for tracking actions agreed in meetings. Add an action with an
 ## How it works
 
 - Everything lives in `index.html` (HTML, CSS and JavaScript in one file). No build step.
-- Data is saved in the browser's local storage, so each person's list stays on their own device and browser.
+- Actions are stored in Supabase (table `public.actions`), so the whole team shares one live list. Changes appear for everyone without refreshing.
+- The "Hide done" toggle is a personal setting saved in each browser.
+
+## Database
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | Primary key |
+| text | text | The action, up to 500 characters |
+| owner | text | Person responsible |
+| due | date | Due date |
+| done | boolean | Ticked off or not |
+| done_at | date | Date it was ticked off |
+| created_at | timestamptz | When it was added |
+
+Row level security is on. Anyone with the app link can read, add, edit and delete actions, as there is no login.
 
 ## Deploy to Vercel
 
