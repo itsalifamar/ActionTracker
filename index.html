@@ -136,7 +136,7 @@ header p { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
 }
 .field { display: grid; gap: 6px; }
 .field label { font-size: 15px; color: var(--muted); font-weight: 700; }
-input[type="text"], input[type="date"] {
+input[type="text"], input[type="date"], input[type="password"] {
   font: inherit;
   font-size: 18px;
   color: var(--ink);
@@ -366,17 +366,155 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
 @media (prefers-reduced-motion: no-preference) {
   .item, .stat .num { transition: background-color .2s ease, color .2s ease; }
 }
+
+/* ---------- Auth & team ---------- */
+[hidden] { display: none !important; }
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px 28px;
+  display: grid;
+  gap: 18px;
+}
+.login .mark {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--accent); color: #fff;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 22px;
+}
+.login h1 { font-size: 28px; line-height: 1.2; }
+.login p { margin: 0; color: var(--muted); font-size: 16px; }
+.login .btn { width: 100%; }
+.stack { display: grid; gap: 14px; }
+
+.userbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.userbar .who { font-size: 16px; color: var(--muted); }
+.userbar .who strong { color: var(--ink); }
+.header-right { display: grid; gap: 10px; justify-items: end; }
+
+.banner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 16px;
+}
+
+.item .by { color: var(--muted); }
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0;
+  width: min(560px, calc(100% - 32px));
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+dialog::backdrop { background: rgba(20, 26, 30, 0.45); }
+.dlg { padding: 24px; display: grid; gap: 18px; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dlg-head h2 { font-size: 22px; }
+.dlg-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.icon-btn {
+  font: inherit; font-size: 24px; line-height: 1;
+  background: none; border: 0; color: var(--muted);
+  cursor: pointer; padding: 4px 8px; border-radius: 8px;
+}
+.icon-btn:hover { background: var(--bg); }
+.hint { font-size: 14px; color: var(--muted); margin: 0; }
+
+.team-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; max-height: 320px; overflow-y: auto; }
+.team-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+}
+.team-row + .team-row { border-top: 1px solid var(--line); }
+.team-row .name { font-weight: 700; overflow-wrap: anywhere; }
+.team-row .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.team-row .row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+.btn.small { font-size: 14px; min-height: 34px; padding: 4px 12px; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.add-user { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+.add-user .full { grid-column: 1 / -1; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.inline-reset { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 0 14px 12px; }
+.inline-reset input { min-height: 40px; font-size: 16px; padding: 6px 12px; }
+@media (max-width: 480px) {
+  .add-user { grid-template-columns: 1fr; }
+  .header-right { justify-items: start; }
+  .userbar { justify-content: flex-start; }
+}
 </style>
 </head>
 <body>
-<main class="wrap">
+<!-- Sign in -->
+<div class="login-wrap" id="loginView" hidden>
+  <form class="login" id="loginForm" novalidate>
+    <div class="mark" aria-hidden="true">✓</div>
+    <div>
+      <h1>Meeting Action Tracker</h1>
+      <p>Sign in with the username and password your admin gave you.</p>
+    </div>
+    <div class="stack">
+      <div class="field">
+        <label for="lUser">Username</label>
+        <input type="text" id="lUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. Minqi">
+      </div>
+      <div class="field">
+        <label for="lPass">Password</label>
+        <input type="password" id="lPass" autocomplete="current-password">
+      </div>
+    </div>
+    <p class="form-error" id="loginError" role="alert"></p>
+    <button class="btn" type="submit" id="loginBtn">Sign in</button>
+  </form>
+</div>
+
+<!-- App -->
+<main class="wrap" id="appView" hidden>
   <header>
     <div>
       <h1>Meeting Action Tracker</h1>
       <p>Every agreed action, who owns it, and when it is due. Shared live with your team.</p>
     </div>
-    <div class="today" id="today"></div>
+    <div class="header-right">
+      <div class="userbar">
+        <span class="who">Signed in as <strong id="whoName"></strong></span>
+        <button class="btn ghost small" type="button" id="teamBtn" hidden>Manage users</button>
+        <button class="btn ghost small" type="button" id="pwBtn">Change password</button>
+        <button class="btn ghost small" type="button" id="signOutBtn">Sign out</button>
+      </div>
+      <div class="today" id="today"></div>
+    </div>
   </header>
+
+  <div class="banner" id="pwBanner" hidden>
+    <span>You are still using the starting password. Change it so only you can sign in as you.</span>
+    <button class="btn small" type="button" id="pwBannerBtn">Change password</button>
+  </div>
 
   <section class="summary" aria-label="Summary">
     <div class="stat open"><span class="num" id="countOpen">0</span><span class="label">Open</span></div>
@@ -419,6 +557,60 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
   <section class="owners" id="owners" aria-live="polite"></section>
 </main>
 
+<!-- Change password -->
+<dialog id="pwDialog" aria-labelledby="pwTitle">
+  <form class="dlg" id="pwForm" novalidate>
+    <div class="dlg-head">
+      <h2 id="pwTitle">Change your password</h2>
+      <button class="icon-btn" type="button" data-close="pwDialog" aria-label="Close">&times;</button>
+    </div>
+    <div class="stack">
+      <div class="field">
+        <label for="pwNew">New password</label>
+        <input type="password" id="pwNew" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="pwConfirm">Type it again</label>
+        <input type="password" id="pwConfirm" autocomplete="new-password">
+      </div>
+      <p class="hint">At least 8 characters.</p>
+    </div>
+    <p class="form-error" id="pwError" role="alert"></p>
+    <div class="dlg-actions">
+      <button class="btn ghost" type="button" data-close="pwDialog" id="pwLater">Not now</button>
+      <button class="btn" type="submit" id="pwSave">Save password</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Manage users (admins only) -->
+<dialog id="teamDialog" aria-labelledby="teamTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="teamTitle">Manage users</h2>
+      <button class="icon-btn" type="button" data-close="teamDialog" aria-label="Close">&times;</button>
+    </div>
+    <ul class="team-list" id="teamList"></ul>
+    <form class="add-user" id="addUserForm" novalidate>
+      <h3 class="full" style="font-size:18px">Add a user</h3>
+      <div class="field">
+        <label for="uName">Username</label>
+        <input type="text" id="uName" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. Priya">
+      </div>
+      <div class="field">
+        <label for="uPass">Starting password</label>
+        <input type="text" id="uPass" autocomplete="off" spellcheck="false" placeholder="At least 8 characters">
+      </div>
+      <label class="check full" for="uAdmin"><input type="checkbox" id="uAdmin"> Can manage users</label>
+      <p class="form-error full" id="userError" role="alert"></p>
+      <div class="full dlg-actions">
+        <button class="btn" type="submit" id="addUserBtn">Add user</button>
+      </div>
+      <p class="hint full">They sign in with this username and password, then get asked to choose their own password.</p>
+    </form>
+  </div>
+</dialog>
+
 <div class="toast" id="toast" role="status" hidden>
   <span id="toastMsg"></span>
   <button type="button" id="toastUndo" hidden>Undo</button>
@@ -429,17 +621,23 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
 (function () {
   "use strict";
 
-  // Supabase connection (publishable key is safe to expose in the browser; access is governed by RLS)
+  // Supabase connection (publishable key is safe in the browser; access is governed by RLS and sign-in)
   var SUPABASE_URL = "https://lexgnjhbxnaorlbqknkz.supabase.co";
   var SUPABASE_KEY = "sb_publishable_-363rmon-8X3TMvruLE7gQ_brUDfUGj";
+  var EMAIL_DOMAIN = "@actiontracker.local"; // usernames map to login emails behind the scenes
   var TABLE = "actions";
   var PREFS_KEY = "meeting-action-tracker.prefs";
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var db = null;
-  var state = { actions: [], hideDone: false, status: "loading", error: "" };
+  var channel = null;
+  var state = { actions: [], team: [], me: null, hideDone: false, status: "loading", error: "" };
   var lastDeleted = null;
   var toastTimer = null;
+  var resetOpenFor = null;
+  var removeArmed = null;
+
+  var $ = function (id) { return document.getElementById(id); };
 
   // ---------- dates ----------
   function pad(n) { return (n < 10 ? "0" : "") + n; }
@@ -472,50 +670,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     return "Due " + fmtDate(a.due);
   }
 
-  // ---------- per-viewer prefs (local only) ----------
-  function loadPrefs() {
-    try { state.hideDone = !!(JSON.parse(localStorage.getItem(PREFS_KEY) || "{}").hideDone); } catch (e) {}
-  }
-  function savePrefs() {
-    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ hideDone: state.hideDone })); } catch (e) {}
-  }
-
-  // ---------- data ----------
-  function upsertLocal(row) {
-    var i = state.actions.findIndex(function (a) { return a.id === row.id; });
-    if (i >= 0) state.actions[i] = row; else state.actions.push(row);
-  }
-  function removeLocal(id) {
-    state.actions = state.actions.filter(function (a) { return a.id !== id; });
-  }
-
-  async function fetchAll() {
-    var res = await db.from(TABLE).select("*").order("due", { ascending: true });
-    if (res.error) throw res.error;
-    state.actions = res.data || [];
-  }
-
-  function subscribe() {
-    db.channel("actions-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, function (p) {
-        if (p.eventType === "DELETE") removeLocal(p.old.id);
-        else upsertLocal(p.new);
-        render();
-      })
-      .subscribe(function (s) {
-        if (s === "SUBSCRIBED") setStatus("live");
-        else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") setStatus("offline");
-      });
-  }
-
-  function setStatus(s, err) {
-    state.status = s;
-    if (err) state.error = err;
-    render();
-  }
-
-  // ---------- render ----------
-  var $ = function (id) { return document.getElementById(id); };
+  // ---------- helpers ----------
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -526,8 +681,226 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     return ((parts[0] || "")[0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   }
   function rank(s) { return { overdue: 0, today: 1, open: 2, done: 3 }[s]; }
+  function nameFor(userId) {
+    var p = state.team.find(function (t) { return t.id === userId; });
+    return p ? p.username : null;
+  }
+  function cleanError(err) {
+    var m = (err && err.message) || "Something went wrong.";
+    return m.replace(/^.*?ERROR:\s*/, "");
+  }
+  function loadPrefs() {
+    try { state.hideDone = !!(JSON.parse(localStorage.getItem(PREFS_KEY) || "{}").hideDone); } catch (e) {}
+  }
+  function savePrefs() {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ hideDone: state.hideDone })); } catch (e) {}
+  }
+  function openDialog(id) { var d = $(id); if (!d.open) d.showModal(); }
+  function closeDialog(id) { var d = $(id); if (d.open) d.close(); }
 
+  // ---------- data ----------
+  function upsertLocal(row) {
+    var i = state.actions.findIndex(function (a) { return a.id === row.id; });
+    if (i >= 0) state.actions[i] = row; else state.actions.push(row);
+  }
+  function removeLocal(id) {
+    state.actions = state.actions.filter(function (a) { return a.id !== id; });
+  }
+  async function fetchAll() {
+    var res = await db.from(TABLE).select("*").order("due", { ascending: true });
+    if (res.error) throw res.error;
+    state.actions = res.data || [];
+  }
+  async function fetchTeam() {
+    var res = await db.from("profiles").select("id, username, is_admin, must_change_password").order("username");
+    if (res.error) throw res.error;
+    state.team = res.data || [];
+  }
+  function subscribe() {
+    if (channel) return;
+    channel = db.channel("actions-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, function (p) {
+        if (p.eventType === "DELETE") removeLocal(p.old.id);
+        else upsertLocal(p.new);
+        render();
+      })
+      .subscribe(function (s) {
+        if (s === "SUBSCRIBED") setStatus("live");
+        else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") setStatus("offline");
+      });
+  }
+  function unsubscribe() {
+    if (channel) { db.removeChannel(channel); channel = null; }
+  }
+  function setStatus(s, err) {
+    state.status = s;
+    if (err) state.error = err;
+    render();
+  }
+
+  // ---------- auth ----------
+  function showView(signedIn) {
+    $("loginView").hidden = signedIn;
+    $("appView").hidden = !signedIn;
+  }
+
+  async function onSignedIn(session) {
+    showView(true);
+    state.status = "loading";
+    render();
+    try {
+      await Promise.all([fetchTeam(), fetchAll()]);
+      state.me = state.team.find(function (t) { return t.id === session.user.id; }) ||
+                 { id: session.user.id, username: (session.user.user_metadata || {}).username || session.user.email.split("@")[0], is_admin: false, must_change_password: false };
+      $("whoName").textContent = state.me.username;
+      $("teamBtn").hidden = !state.me.is_admin;
+      $("pwBanner").hidden = !state.me.must_change_password;
+      if (state.status === "loading") state.status = "live";
+      subscribe();
+      render();
+      if (state.me.must_change_password && !sessionStorageGet("pw-prompted")) {
+        sessionStorageSet("pw-prompted", "1");
+        openPw();
+      }
+    } catch (err) {
+      setStatus("error", cleanError(err));
+    }
+  }
+
+  function onSignedOut() {
+    unsubscribe();
+    state.actions = []; state.team = []; state.me = null;
+    closeDialog("pwDialog"); closeDialog("teamDialog");
+    showView(false);
+    $("lPass").value = "";
+    $("lUser").focus();
+  }
+
+  function sessionStorageGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function sessionStorageSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+
+  async function signIn(e) {
+    e.preventDefault();
+    var user = $("lUser").value.trim();
+    var pass = $("lPass").value;
+    if (!user || !pass) { $("loginError").textContent = "Enter your username and password."; return; }
+    $("loginBtn").disabled = true;
+    $("loginError").textContent = "";
+    var res = await db.auth.signInWithPassword({ email: user.toLowerCase() + EMAIL_DOMAIN, password: pass });
+    $("loginBtn").disabled = false;
+    if (res.error) {
+      $("loginError").textContent = /invalid/i.test(res.error.message)
+        ? "That username and password don't match. Check with your admin if you're unsure."
+        : "Could not sign in: " + res.error.message;
+      $("lPass").select();
+    }
+  }
+
+  async function signOut() {
+    await db.auth.signOut();
+  }
+
+  // ---------- change password ----------
+  function openPw() {
+    $("pwNew").value = ""; $("pwConfirm").value = ""; $("pwError").textContent = "";
+    openDialog("pwDialog");
+    $("pwNew").focus();
+  }
+  async function savePw(e) {
+    e.preventDefault();
+    var a = $("pwNew").value, b = $("pwConfirm").value;
+    if (a.length < 8) { $("pwError").textContent = "Use at least 8 characters."; return; }
+    if (a !== b) { $("pwError").textContent = "The two passwords don't match."; return; }
+    if (a.toLowerCase() === "password") { $("pwError").textContent = "Pick something other than the starting password."; return; }
+    $("pwSave").disabled = true;
+    var res = await db.auth.updateUser({ password: a });
+    if (!res.error) {
+      var r2 = await db.rpc("mark_password_changed");
+      if (r2.error) res = r2;
+    }
+    $("pwSave").disabled = false;
+    if (res.error) { $("pwError").textContent = "Could not change your password: " + cleanError(res.error); return; }
+    if (state.me) state.me.must_change_password = false;
+    $("pwBanner").hidden = true;
+    closeDialog("pwDialog");
+    showToast("Password changed.");
+  }
+
+  // ---------- manage users ----------
+  async function openTeam() {
+    resetOpenFor = null; removeArmed = null;
+    $("userError").textContent = "";
+    try { await fetchTeam(); } catch (err) { showToast("Could not load users: " + cleanError(err)); return; }
+    renderTeam();
+    openDialog("teamDialog");
+  }
+  function renderTeam() {
+    $("teamList").innerHTML = state.team.map(function (u) {
+      var isMe = state.me && u.id === state.me.id;
+      var chips = (u.is_admin ? '<span class="chip accent">Admin</span>' : "") +
+                  (u.must_change_password ? '<span class="chip">Starting password</span>' : "") +
+                  (isMe ? '<span class="chip">You</span>' : "");
+      var actions = isMe ? "" :
+        '<button class="btn ghost small" type="button" data-act="reset" data-id="' + u.id + '">Reset password</button>' +
+        '<button class="btn ghost small danger" type="button" data-act="remove" data-id="' + u.id + '">' +
+          (removeArmed === u.id ? "Confirm remove" : "Remove") + "</button>";
+      var reset = resetOpenFor === u.id
+        ? '<form class="inline-reset" data-reset="' + u.id + '"><input type="text" id="reset-' + u.id + '" placeholder="New starting password" aria-label="New starting password for ' + esc(u.username) + '" autocomplete="off">' +
+          '<button class="btn small" type="submit">Save</button><button class="btn ghost small" type="button" data-act="cancel-reset">Cancel</button></form>'
+        : "";
+      return '<li><div class="team-row"><span class="avatar" aria-hidden="true">' + esc(initials(u.username)) + "</span>" +
+        '<div><div class="name">' + esc(u.username) + '</div><div class="meta">' + chips + "</div></div>" +
+        '<div class="row-actions">' + actions + "</div></div>" + reset + "</li>";
+    }).join("");
+    if (resetOpenFor) { var i = $("reset-" + resetOpenFor); if (i) i.focus(); }
+  }
+  async function onTeamClick(e) {
+    var btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    var act = btn.getAttribute("data-act"), id = btn.getAttribute("data-id");
+    if (act === "reset") { resetOpenFor = id; removeArmed = null; renderTeam(); }
+    else if (act === "cancel-reset") { resetOpenFor = null; renderTeam(); }
+    else if (act === "remove") {
+      if (removeArmed !== id) { removeArmed = id; resetOpenFor = null; renderTeam(); return; }
+      var name = nameFor(id);
+      btn.disabled = true;
+      var res = await db.rpc("admin_delete_user", { p_user_id: id });
+      if (res.error) { btn.disabled = false; $("userError").textContent = cleanError(res.error); return; }
+      removeArmed = null;
+      await fetchTeam(); renderTeam(); render();
+      showToast(name + " can no longer sign in.");
+    }
+  }
+  async function onTeamSubmit(e) {
+    var form = e.target.closest("form[data-reset]");
+    if (!form) return;
+    e.preventDefault();
+    var id = form.getAttribute("data-reset");
+    var pw = $("reset-" + id).value;
+    var res = await db.rpc("admin_set_password", { p_user_id: id, p_password: pw });
+    if (res.error) { $("userError").textContent = cleanError(res.error); return; }
+    var name = nameFor(id);
+    resetOpenFor = null; $("userError").textContent = "";
+    await fetchTeam(); renderTeam();
+    showToast("Password reset for " + name + ". Let them know the new one.");
+  }
+  async function addUser(e) {
+    e.preventDefault();
+    var name = $("uName").value.trim(), pw = $("uPass").value, admin = $("uAdmin").checked;
+    if (!name || !pw) { $("userError").textContent = "Enter a username and a starting password."; return; }
+    $("addUserBtn").disabled = true;
+    var res = await db.rpc("admin_create_user", { p_username: name, p_password: pw, p_is_admin: admin });
+    $("addUserBtn").disabled = false;
+    if (res.error) { $("userError").textContent = cleanError(res.error); return; }
+    $("uName").value = ""; $("uPass").value = ""; $("uAdmin").checked = false; $("userError").textContent = "";
+    await fetchTeam(); renderTeam(); render();
+    showToast(name + " added. They can sign in now.");
+    $("uName").focus();
+  }
+
+  // ---------- render ----------
   function render() {
+    if ($("appView").hidden) return;
     var today = todayIso();
     var statusText = { loading: "Connecting…", live: "Live", offline: "Offline", error: "Not connected" }[state.status];
     $("today").innerHTML = '<span class="sync sync-' + state.status + '">' + statusText + "</span> Today: " + fmtDate(today);
@@ -550,15 +923,20 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     $("countOverdue").textContent = overdue;
     $("overdueTile").classList.toggle("zero", overdue === 0);
 
-    var names = Object.keys(groups).map(function (k) { return groups[k].name; }).sort();
+    // owner suggestions: team members plus anyone already owning an action
+    var seen = {}, names = [];
+    state.team.map(function (t) { return t.username; })
+      .concat(Object.keys(groups).map(function (k) { return groups[k].name; }))
+      .forEach(function (n) { var k = n.toLowerCase(); if (!seen[k]) { seen[k] = 1; names.push(n); } });
+    names.sort(function (x, y) { return x.localeCompare(y); });
     $("ownerList").innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join("");
 
     var notes = [];
-    if (state.status === "error") notes.push("<span>Could not load actions from the database: " + esc(state.error) + '</span><button class="btn ghost" type="button" id="retryBtn">Try again</button>');
-    if (state.status === "offline") notes.push("<span>Live updates paused. Changes you make still save, refresh to see others' changes.</span>");
+    if (state.status === "error") notes.push("<span>Could not load actions: " + esc(state.error) + '</span><button class="btn ghost" type="button" id="retryBtn">Try again</button>');
+    if (state.status === "offline") notes.push("<span>Live updates paused. Your changes still save. Refresh to see other people's changes.</span>");
     $("notice").innerHTML = notes.join("");
     var rb = $("retryBtn");
-    if (rb) rb.addEventListener("click", start);
+    if (rb) rb.addEventListener("click", function () { db.auth.getSession().then(function (r) { if (r.data.session) onSignedIn(r.data.session); }); });
 
     if (state.status === "loading" && !state.actions.length) {
       $("owners").innerHTML = '<div class="empty" style="grid-column:1/-1">Loading actions…</div>';
@@ -592,10 +970,11 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
       var body = visible.length
         ? '<ul class="items">' + visible.map(function (i) {
             var a = i.a, cid = "cb-" + a.id;
+            var by = a.created_by ? nameFor(a.created_by) : null;
             return '<li class="item is-' + i.s + '" data-id="' + a.id + '">' +
               '<input type="checkbox" id="' + cid + '"' + (a.done ? " checked" : "") + ' aria-label="Mark done: ' + esc(a.text) + '">' +
               '<label for="' + cid + '"><div class="text">' + esc(a.text) + '</div>' +
-              '<div class="due">' + esc(dueLabel(a, today)) + '</div></label>' +
+              '<div class="due">' + esc(dueLabel(a, today)) + (by ? '<span class="by">. Added by ' + esc(by) + "</span>" : "") + '</div></label>' +
               '<button class="del" type="button" aria-label="Delete action: ' + esc(a.text) + '" title="Delete">&times;</button>' +
             "</li>";
           }).join("") + "</ul>"
@@ -623,17 +1002,15 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
       $(missing[0] === "action" ? "fText" : missing[0] === "owner" ? "fOwner" : "fDue").focus();
       return;
     }
-    var existing = state.actions.find(function (a) { return a.owner.trim().toLowerCase() === owner.toLowerCase(); });
-    if (existing) owner = existing.owner.trim();
+    var match = state.team.map(function (t) { return t.username; })
+      .concat(state.actions.map(function (a) { return a.owner.trim(); }))
+      .find(function (n) { return n.toLowerCase() === owner.toLowerCase(); });
+    if (match) owner = match;
 
-    var btn = $("addBtn");
-    btn.disabled = true;
+    $("addBtn").disabled = true;
     var res = await db.from(TABLE).insert({ text: text, owner: owner, due: due }).select().single();
-    btn.disabled = false;
-    if (res.error) {
-      $("formError").textContent = "Could not save the action: " + res.error.message;
-      return;
-    }
+    $("addBtn").disabled = false;
+    if (res.error) { $("formError").textContent = "Could not save the action: " + cleanError(res.error); return; }
     upsertLocal(res.data);
     $("formError").textContent = "";
     $("fText").value = "";
@@ -666,12 +1043,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     removeLocal(id);
     render();
     var res = await db.from(TABLE).delete().eq("id", id);
-    if (res.error) {
-      upsertLocal(item);
-      render();
-      showToast("Could not delete that action. Try again.");
-      return;
-    }
+    if (res.error) { upsertLocal(item); render(); showToast("Could not delete that action. Try again."); return; }
     lastDeleted = item;
     showToast("Action deleted.", true);
   }
@@ -683,7 +1055,7 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     hideToast();
     var res = await db.from(TABLE).insert({
       id: row.id, text: row.text, owner: row.owner, due: row.due,
-      done: row.done, done_at: row.done_at, created_at: row.created_at
+      done: row.done, done_at: row.done_at, created_at: row.created_at, created_by: row.created_by
     }).select().single();
     if (res.error) { showToast("Could not restore the action."); return; }
     upsertLocal(res.data);
@@ -737,46 +1109,63 @@ ul.items { list-style: none; margin: 0; padding: 6px 0; }
     $("toastUndo").hidden = !withUndo;
     $("toast").hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(hideToast, withUndo ? 6000 : 3000);
+    toastTimer = setTimeout(hideToast, withUndo ? 6000 : 3500);
   }
   function hideToast() { $("toast").hidden = true; }
 
   // ---------- init ----------
-  async function start() {
-    setStatus("loading");
-    try {
-      if (!db) {
-        if (!window.supabase) throw new Error("the database library did not load");
-        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        subscribe();
-      }
-      await fetchAll();
-      if (state.status === "loading") state.status = "live";
-      render();
-    } catch (err) {
-      setStatus("error", err && err.message ? err.message : "unknown error");
+  function init() {
+    if (!window.supabase) {
+      showView(false);
+      $("loginError").textContent = "The app could not load its database library. Check your connection and refresh.";
+      $("loginBtn").disabled = true;
+      return;
     }
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    loadPrefs();
+    $("hideDone").checked = state.hideDone;
+    $("fDue").value = addDays(7);
+
+    $("loginForm").addEventListener("submit", signIn);
+    $("signOutBtn").addEventListener("click", signOut);
+    $("pwBtn").addEventListener("click", openPw);
+    $("pwBannerBtn").addEventListener("click", openPw);
+    $("pwForm").addEventListener("submit", savePw);
+    $("teamBtn").addEventListener("click", openTeam);
+    $("teamList").addEventListener("click", onTeamClick);
+    $("teamList").addEventListener("submit", onTeamSubmit);
+    $("addUserForm").addEventListener("submit", addUser);
+    document.querySelectorAll("[data-close]").forEach(function (b) {
+      b.addEventListener("click", function () { closeDialog(b.getAttribute("data-close")); });
+    });
+
+    $("addForm").addEventListener("submit", addAction);
+    $("owners").addEventListener("change", onListChange);
+    $("owners").addEventListener("click", onListClick);
+    $("hideDone").addEventListener("change", function () { state.hideDone = this.checked; savePrefs(); render(); });
+    $("copyBtn").addEventListener("click", copyOpen);
+    $("toastUndo").addEventListener("click", undoDelete);
+    ["fText", "fOwner", "fDue"].forEach(function (id) {
+      $(id).addEventListener("input", function () { this.setAttribute("aria-invalid", "false"); });
+    });
+
+    var currentUserId; // undefined until the first auth event, so a signed-out start still shows the login
+    db.auth.onAuthStateChange(function (event, session) {
+      var uid = session ? session.user.id : null;
+      if (uid === currentUserId) return; // ignore token refreshes
+      currentUserId = uid;
+      // run outside the auth callback to avoid blocking the client
+      setTimeout(function () { if (session) onSignedIn(session); else onSignedOut(); }, 0);
+    });
+
+    setInterval(function () { if (state.me) render(); }, 60000);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && state.me) fetchAll().then(render).catch(function () {});
+    });
   }
 
-  loadPrefs();
-  $("hideDone").checked = state.hideDone;
-  $("fDue").value = addDays(7);
-  $("addForm").addEventListener("submit", addAction);
-  $("owners").addEventListener("change", onListChange);
-  $("owners").addEventListener("click", onListClick);
-  $("hideDone").addEventListener("change", function () { state.hideDone = this.checked; savePrefs(); render(); });
-  $("copyBtn").addEventListener("click", copyOpen);
-  $("toastUndo").addEventListener("click", undoDelete);
-  ["fText", "fOwner", "fDue"].forEach(function (id) {
-    $(id).addEventListener("input", function () { this.setAttribute("aria-invalid", "false"); });
-  });
-  // re-check overdue status every minute and refetch when the tab regains focus
-  setInterval(render, 60000);
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible" && db) fetchAll().then(render).catch(function () {});
-  });
-  render();
-  start();
+  init();
 })();
 </script>
 </body>

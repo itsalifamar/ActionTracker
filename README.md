@@ -5,22 +5,31 @@ A single-page app for tracking actions agreed in meetings. Add an action with an
 ## How it works
 
 - Everything lives in `index.html` (HTML, CSS and JavaScript in one file). No build step.
-- Actions are stored in Supabase (table `public.actions`), so the whole team shares one live list. Changes appear for everyone without refreshing.
-- The "Hide done" toggle is a personal setting saved in each browser.
+- People sign in with a username and password. Accounts live in Supabase Auth (`auth.users`), with passwords stored as bcrypt hashes.
+- Actions are stored in Supabase (`public.actions`) and only signed-in users can see or change them. Changes appear for everyone live.
+- "Hide done" is a personal setting saved in each browser.
+
+## Users
+
+Admins see a **Manage users** button to add people, reset passwords and remove accounts. New users are asked to choose their own password after their first sign-in.
+
+Usernames are turned into login emails behind the scenes (`minqi` becomes `minqi@actiontracker.local`), so nobody needs a real email address.
+
+To make someone an admin, run this in the Supabase SQL editor:
+
+```sql
+update public.profiles set is_admin = true where lower(username) = 'xindy';
+```
 
 ## Database
 
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | Primary key |
-| text | text | The action, up to 500 characters |
-| owner | text | Person responsible |
-| due | date | Due date |
-| done | boolean | Ticked off or not |
-| done_at | date | Date it was ticked off |
-| created_at | timestamptz | When it was added |
+| Table | Purpose |
+|---|---|
+| `auth.users` | Supabase's built-in accounts and password hashes |
+| `public.profiles` | Username, admin flag and "still on starting password" flag, linked one-to-one to `auth.users` |
+| `public.actions` | The actions: text, owner, due date, done, who added it |
 
-Row level security is on. Anyone with the app link can read, add, edit and delete actions, as there is no login.
+Admin features run through database functions (`admin_create_user`, `admin_set_password`, `admin_delete_user`) that check the caller is an admin before doing anything.
 
 ## Deploy to Vercel
 
